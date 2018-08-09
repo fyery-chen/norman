@@ -1,7 +1,9 @@
-/.idea
 /.dapper
 /bin
 /dist
 *.swp
 /.trash-cache
+/.idea
 /trash.lock
+/types
+*trash.lock

@@ -9,6 +9,9 @@ import (
 
 	"github.com/rancher/norman/name"
 	"github.com/rancher/norman/types"
+	"github.com/rancher/types/apis/management.cattle.io/v3"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -43,6 +46,26 @@ type urlBuilder struct {
 	apiVersion      types.APIVersion
 	subContext      string
 	query           url.Values
+}
+
+func getBaseUrl() string {
+
+	kubeconfig, err := rest.InClusterConfig()
+	if err != nil {
+		return ""
+	}
+	management, err := v3.NewForConfig(*kubeconfig)
+	if err != nil {
+		return ""
+	}
+	settingClient := management.Settings("")
+	serverUrl, err := settingClient.Get("server-url", v1.GetOptions{})
+	if err != nil {
+		return ""
+	}
+	baseUrl := serverUrl.Value + "/meta/proxy/http:/cattle-cce-service"
+
+	return baseUrl
 }
 
 func (u *urlBuilder) SetSubContext(subContext string) {
@@ -183,6 +206,9 @@ func (u *urlBuilder) getPluralName(schema *types.Schema) string {
 //  - With x-api-request-url, the query string is passed, it will be dropped to match the other formats.
 //  - If the x-forwarded-host/host header has a port and x-forwarded-port has been passed, x-forwarded-port will be used.
 func parseRequestURL(r *http.Request) string {
+	if r.Host == "cattle-cce-service" {
+		return fmt.Sprintf("%s%s", getBaseUrl(), r.URL.Path)
+	}
 	// Get url from custom x-api-request-url header
 	requestURL := getOverrideHeader(r, DefaultOverrideURLHeader, "")
 	if requestURL != "" {
@@ -247,6 +273,9 @@ func getOverrideHeader(r *http.Request, header string, defaultValue string) stri
 }
 
 func parseResponseURLBase(requestURL string, r *http.Request) (string, error) {
+	if r.Host == "cattle-cce-service" {
+		return getBaseUrl(), nil
+	}
 	path := r.URL.Path
 
 	index := strings.LastIndex(requestURL, path)
