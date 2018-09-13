@@ -258,6 +258,7 @@ func (p *Store) realWatch(apiContext *types.APIContext, schema *types.Schema, op
 				data.Object[".removed"] = true
 			}
 			result <- data.Object
+			logrus.Infof("Watch events: %v", data.Object)
 		}
 		logrus.Debugf("closing watcher for %s", schema.ID)
 		close(result)
